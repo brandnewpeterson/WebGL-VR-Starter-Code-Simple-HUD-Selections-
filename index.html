@@ -1,7 +1,14 @@
 <!DOCTYPE html>
+<!--This file is based off Google VR app starter code available here: https://medium.com/r/?url=http%3A%2F%2Fvr.chromeexperiments.com%2Fcardboard.zip.
+I added a HUD and selection mechanism to the starter code with functionality from these GitHub repos:
+* Mr. Doob’s Three.js
+* Kimmo Brunfeldt’s progressbar.js
+* Sole’s tween.js
+Feel free to adapt this enhanced starter code for your own projects.
+Jason Peterson-->
 <html lang="en">
 <head>
-    <title>PluckyCharms Land: A VR Scene with HUD and Simple Selections</title>
+    <title>PluckyCharms Land: A Simple VR Scene with HUD and "Long-Gaze" Selections</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <style>
@@ -138,6 +145,8 @@
     var min = { x: 100, y: 100, z: 100 }
     var touchTweenTo = new TWEEN.Tween(min);
     var max = { x: 120, y: 120, z: 120 };
+
+    //Set up animation cycle used on touched objects
     touchTweenTo.to(max, 200);
     touchTweenTo.easing(TWEEN.Easing.Bounce.InOut);
     touchTweenTo.repeat(Infinity); // repeats forever
@@ -168,7 +177,7 @@
     document.getElementById("selection_confirmation_overlay").style.display = 'none';
 
 
-    //Build threejs scene
+    //Build Three.js scene
 
     init();
     animate();
@@ -193,7 +202,7 @@
             svgStyle: null        });
             //right_bar.animate(1);
 
-        //Stereo Scene
+        //Stereo scene
         renderer = new THREE.WebGLRenderer({ antialias: true });
         element = renderer.domElement;
         container = document.getElementById('scene');
@@ -232,14 +241,16 @@
         }
         window.addEventListener('deviceorientation', setOrientationControls, true);
 
+
+        // Add lights
         var ambLight = new THREE.AmbientLight( 0x808080 ); // soft white light
         scene.add( ambLight );
 
-        // add point light
         var ptLight = new THREE.PointLight(0xffffff, 1.75, 1000);
         ptLight.position.set(-100, 100, 100);
         scene.add(ptLight);
 
+        //Add other scene elements
         drawSimpleSkybox();
         drawShapes();
 
@@ -349,6 +360,7 @@
 
     }
 
+    //What happens after an object is selected
     function postSelectAction(selectedObjectName){
         console.log(
             "The " +
@@ -436,35 +448,35 @@
 
         intersects = getIntersections(selectableObjs);
 
-        scene.traverse (function (object)
-        {
-            if (object instanceof THREE.Group){
-                if (intersects.length == 0){//Set all charm's touch flag to false as nothing is selected.
-                    object.userData.touched = false;
-                    left_bar.set(0.0);//Reset any active progress bars to 0 as nothing is selected.
-                    right_bar.set(0.0);
+        if (intersects.length == 0){//nothing being "touched"
+            left_bar.set(0.0);//reset any active progress bars to 0
+            right_bar.set(0.0);
 
+            //Loop over all OBJ objects (the charms)
+            scene.traverse (function (object)
+            {
+                //Set all charms touch flag to false as nothing is selected.
+                if (object instanceof THREE.Group){
+                    if (intersects.length == 0){
+                        object.userData.touched = false;
+                    }
                 }
-            }
-        });
-
-        if (intersects.length > 0){
-            //Set the touched charm's touch flag to true, so we can give it special treatment in the animation function.
+            });
+        } else {//something being touched
+            //Set the touched charm's touch flag to true, so we can give it special treatment in the animation function
             intersects[0].object.parent.userData.touched = true;
-            msg = getTouchMsg(intersects[0].object.parent.userData.name); //Update HUD text to register the touch
+            msg = getTouchMsg(intersects[0].object.parent.userData.name); //update HUD text to register the touch
             updateHUDTxt(msg);
         }
 
         effect.render(scene, camera);
 
-
     }
 
     function animate(t) {
 
-
         TWEEN.update();
-        //var animScale;
+
         touchTweenTo.onUpdate(function() {
             animScale = this;
         });
@@ -481,11 +493,10 @@
                     object.scale.z = animScale.z;
 
 
-                    if(left_bar.value() == 0){//Don't restart progress bar if already progress
-                        left_bar.animate(1.0);
+                    if(left_bar.value() == 0){//don't restart progress bar if already progress
                         left_bar.animate(1.0, {
                         }, function() {
-                            postSelectAction(object.userData.name);//Add callback to left side progress bar to register selection.
+                            postSelectAction(object.userData.name);//add callback to left side progress bar to register completed selection
                         });
                     }
                     if(right_bar.value() == 0){//don't restart if in progress
